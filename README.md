@@ -1,56 +1,63 @@
-# Welcome to your Expo app 👋
+# DeutschFlow — AI German learning app (A1 → C1)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native + Expo (SDK 58, Expo Router) app for iOS & Android, plus a zero-dependency Node backend for AI, accounts and sync.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install
+npx expo start            # Expo Go: everything except voice input
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Voice input (speech recognition) is a native module, so it needs a **development build**:
 
-### Other setup steps
+```bash
+npx eas-cli@latest build --profile development --platform android   # or ios
+npx expo start --dev-client
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Without it the app falls back to typed input everywhere. TTS (German voices) works in Expo Go.
 
-## Learn more
+### AI server (optional but recommended)
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+cd server
+cp .env.example .env      # add ANTHROPIC_API_KEY
+npm start                 # Node ≥ 22.13, listens on :8787
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+In the app: **Settings → AI server** → enter `http://<your-computer-LAN-IP>:8787` → *Save & test*.
+The API key never leaves the server. Without a server the app runs fully offline: scripted conversation scenarios, rule-based corrections, built-in passages rotating daily.
 
-## Join the community
+## Features
 
-Join our community of developers creating universal apps.
+| Area | What works |
+|---|---|
+| **Vocabulary notifications** | Pre-scheduled local notifications every 2/3/5/10/15/30 min, each containing a real word card; quiet hours; tap → word card. Queue topped up on every app open (iOS 64-pending limit respected; Android best-effort delivery, no exact-alarm permission). |
+| **Word Flow** | In-app mode with an exact interval timer, new words + due reviews interleaved, auto-pronunciation. |
+| **Word cards** | Article (colour-coded der/die/das), plural, verb forms (Präsens/Präteritum/Perfekt), phonetics, TTS, 2 examples + translations, usage, common mistakes, synonyms/antonyms, word family, "Why do Germans say it?" (AI). 1,290+ words (A1 174 · A2 425 · B1 352 · B2 329 · C1 13); core words have hand-written phonetics, the rest approximate respellings (marked ≈) plus audio. |
+| **Spaced repetition** | SM-2 variant (Again/Hard/Good/Easy with interval previews); mastered/difficult/due tracking; games feed the schedule. |
+| **Levels A1–C1** | Level-weighted word selection by frequency + preferred topics; grammar and reading per level. |
+| **Reading** | 27 passages A1–B2 + daily passage; tap-to-translate, sentence-by-sentence, colour-coded word-by-word (POS), grammar notes, key vocab, comprehension questions; AI-generated new passages. |
+| **Grammar** | 26 lessons (articles → Konjunktiv I, incl. reflexive verbs, zu-infinitive, verbs with prepositions, Plusquamperfekt, Futur, two-part connectors, n-declension, participles, nominal style, passive alternatives) with tables, audio examples, MC / fill-in / sentence-order exercises, "Ask your AI teacher". |
+| **Speaking** | AI conversation at any level or topic, 6 simulator scenarios (restaurant, doctor, landlord, office hours, job interview, Bürgeramt), waits for you to finish, corrections in English at the end (or collapsed per message), more-natural phrasing. Pronunciation trainer with similarity scoring. |
+| **Games** | Daily Quiz, Word Matching, Article Challenge, Sentence Builder, Fill in the Blanks, Listening, Speed (60 s), Grammar Battle (lives + combos), Memory, Conversation Simulator. XP, levels, streaks, 11 achievements. |
+| **AI personal teacher** | Tracks words, grammar accuracy per topic, mistakes, reading, speaking time; daily plan re-prioritises weak topics (e.g. Dativ); profile sent with every AI request. |
+| **Progress** | Learned/mastered/to-revise, grammar, passages, speaking minutes, quiz average, 7/30-day activity chart, CEFR estimate, strengths & weaknesses. |
+| **Translator** | German ⇄ English: word-by-word offline (98% coverage of the app's texts), full sentences via the AI server. |
+| **Extras** | Mistake notebook, saved-words notebook, word-family explorer, slang & idioms with "why", immersion mode (UI gradually switches to German), dark/light/system theme, offline-first storage, account + cloud sync. |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Structure
+
+```
+src/app/            screens (Expo Router) — (tabs)/ = 7 main tabs
+src/components/     UI kit, word card, exercise renderer
+src/data/           vocab, grammar, readings, scenarios (typed; AI can append)
+src/lib/            store (zustand + AsyncStorage), srs, learning/planner,
+                    notifications, speech (TTS/STT), ai (+offline tutor), sync, i18n
+server/src/server.mjs   auth, SQLite sync, /ai/chat|correct|explain|reading|words
+```
+
+## Notes on notification reliability
+
+Neither iOS nor Android lets an app run code every 2–3 minutes in the background. DeutschFlow therefore schedules a batch of up to 60 (iOS) / 50 (Android) notifications ahead with the word content baked in, skips quiet hours, and refills whenever the app returns to the foreground. If you don't open the app for a few hours the batch can run out — Word Flow is the exact, unrestricted mode.
