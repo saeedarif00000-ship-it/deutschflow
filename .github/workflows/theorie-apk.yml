@@ -1,0 +1,46 @@
+name: Build FahrFlow Theorie APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['theorie/**', '.github/workflows/theorie-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: theorie
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: theorie/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build release APK
+        working-directory: theorie/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk ../FahrFlow-Theorie.apk
+      - name: Publish download (GitHub Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: theorie-${{ github.run_number }}
+          name: FahrFlow Theorie ${{ github.run_number }}
+          body: Führerschein-Theorie Klasse B. Open on your Android phone, tap FahrFlow-Theorie.apk, then install.
+          files: FahrFlow-Theorie.apk
+          make_latest: false
