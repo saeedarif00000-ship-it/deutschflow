@@ -18,7 +18,7 @@ export function QuestionImage({ q }: { q: Question }) {
     <View style={{ alignItems: 'center', backgroundColor: c.cardAlt, borderRadius: 14, padding: 12, gap: 6 }}>
       {q.sign ? <Sign id={q.sign} size={130} /> : null}
       {q.scene ? <Scene spec={q.scene} size={280} /> : null}
-      {q.sign && SIGN_BY_ID[q.sign] ? <Txt variant="small">Zeichen {SIGN_BY_ID[q.sign].nr}</Txt> : null}
+      {q.sign && SIGN_BY_ID[q.sign] && /^\d/.test(SIGN_BY_ID[q.sign].nr) ? <Txt variant="small">Zeichen {SIGN_BY_ID[q.sign].nr}</Txt> : null}
     </View>
   );
 }

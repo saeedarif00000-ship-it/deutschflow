@@ -1,4 +1,5 @@
 import type { SceneSpec } from '@/components/Scene';
+import { SYMBOLS } from '@/data/symbols';
 
 /**
  * Original practice questions written for this app, covering the topics of the
@@ -45,7 +46,7 @@ export interface Question {
 
 const o = (de: string, en: string, ok = false): Option => ({ de, en, ok });
 
-export const QUESTIONS: Question[] = [
+const BASE_QUESTIONS: Question[] = [
   // ─────────── Vorfahrt (scenes) ───────────
   {
     id: 'v1', cat: 'G', topic: 'vorfahrt', pts: 5,
@@ -386,5 +387,32 @@ export const QUESTIONS: Question[] = [
   { id: 'p4', cat: 'G', topic: 'recht', pts: 3, de: 'Welche Verhaltensweise ist laut § 1 StVO die Grundregel im Straßenverkehr?', en: 'What is the basic rule of road traffic according to § 1 StVO?',
     opts: [o('Ständige Vorsicht und gegenseitige Rücksicht', 'Constant care and mutual consideration', true), o('Niemanden mehr als unvermeidbar behindern oder belästigen', 'Obstruct or inconvenience nobody more than unavoidable', true), o('Wer Vorfahrt hat, muss nie bremsen', 'Whoever has priority never needs to brake')], exp: '§ 1 is the foundation for all other rules.' },
 ];
+
+/** One picture question per symbol: "What does this sign mean?" (4 options, distractors from the same group). */
+const SIGN_QUESTIONS: Question[] = SYMBOLS.map((s, idx) => {
+  const same = SYMBOLS.filter((x) => x.group === s.group && x.de !== s.de);
+  const picks: typeof same = [];
+  for (let k = 1; picks.length < 3 && k <= same.length * 3; k++) {
+    const c = same[(idx * 7 + k * 5) % same.length];
+    if (!picks.includes(c)) picks.push(c);
+  }
+  const nm = (t: string) => t.replace(/ \((Diesel, )?(rot|gelb|grün|blau)\)/, '');
+  const opts = [o(nm(s.de), s.en, true), ...picks.map((x) => o(nm(x.de), x.en))];
+  const rot = idx % opts.length; // vary the position of the right answer
+  const dash = s.group === 'Kontroll';
+  return {
+    id: 'sq_' + s.id,
+    cat: dash ? 'B' : 'G',
+    topic: dash ? 'technik' : 'zeichen',
+    pts: s.group === 'Gefahr' || s.group === 'Kontroll' ? 3 : 4,
+    de: dash ? 'Was zeigt diese Kontrollleuchte an?' : s.group === 'Markierung' ? 'Was bedeutet diese Markierung?' : s.group === 'Ampel' ? 'Was bedeutet dieses Lichtzeichen bzw. Zeichen?' : 'Was bedeutet dieses Zeichen?',
+    en: dash ? 'What does this warning light indicate?' : 'What does this sign / marking mean?',
+    opts: [...opts.slice(rot), ...opts.slice(0, rot)],
+    sign: s.id,
+    exp: `${s.meaning}${s.tip ? ' ' + s.tip : ''} — ${s.meaningEn}`,
+  } as Question;
+});
+
+export const QUESTIONS: Question[] = [...BASE_QUESTIONS, ...SIGN_QUESTIONS];
 
 export const Q_BY_ID = Object.fromEntries(QUESTIONS.map((q) => [q.id, q]));

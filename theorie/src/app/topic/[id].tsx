@@ -6,6 +6,7 @@ import Animated, { FadeInRight, ZoomIn } from 'react-native-reanimated';
 import { QuestionView } from '@/components/QuestionView';
 import { Button, Card, Empty, Progress, Row, StackScreen, Txt } from '@/components/ui';
 import { QUESTIONS, TOPICS } from '@/data/questions';
+import { GROUPS, SYMBOLS } from '@/data/symbols';
 import { isLearned, isWeak, useStore } from '@/lib/store';
 
 const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
@@ -13,7 +14,8 @@ const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
 export default function TopicPractice() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const topic = TOPICS.find((t) => t.id === id);
-  const title = topic?.de ?? ({ mixed: 'Gemischt', weak: 'Fehler wiederholen', marked: 'Markierte Fragen', images: 'Bildfragen' } as Record<string, string>)[id ?? ''] ?? 'Üben';
+  const grp = id?.startsWith('grp-') ? GROUPS.find((g) => 'grp-' + g.id === id) : undefined;
+  const title = grp ? grp.de + ' – Quiz' : topic?.de ?? ({ mixed: 'Gemischt', weak: 'Fehler wiederholen', marked: 'Markierte Fragen', images: 'Bildfragen' } as Record<string, string>)[id ?? ''] ?? 'Üben';
 
   const queue = useMemo(() => {
     const st = useStore.getState().q;
@@ -21,6 +23,7 @@ export default function TopicPractice() {
     if (topic) list = QUESTIONS.filter((q) => q.topic === id);
     if (id === 'weak') list = QUESTIONS.filter((q) => isWeak(st[q.id]));
     if (id === 'marked') list = QUESTIONS.filter((q) => st[q.id]?.marked);
+    if (grp) { const ids = new Set(SYMBOLS.filter((x) => x.group === grp.id).map((x) => x.id)); list = QUESTIONS.filter((q) => q.sign && ids.has(q.sign)); }
     if (id === 'images') list = QUESTIONS.filter((q) => q.sign || q.scene);
     // unsure / unseen first, learned last
     const rank = (q: (typeof QUESTIONS)[number]) => (isWeak(st[q.id]) ? 0 : !st[q.id] ? 1 : isLearned(st[q.id]) ? 3 : 2);
